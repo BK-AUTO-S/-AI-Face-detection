@@ -3,41 +3,29 @@ version: '3.8'
 services:
   backend:
     build: .
+    container_name: face_recognition_backend
     ports:
       - "8000:8000"
     volumes:
-      - ./static:/app/static
+      - type: bind
+        source: ./data
+        target: /app/data
+      - type: bind
+        source: ./static
+        target: /app/static
     environment:
       - PYTHONUNBUFFERED=1
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=PlLcIne8Syc9e28KSioAeA/Vzz8=
-      - POSTGRES_DB=postgres
-      - POSTGRES_HOST=host.docker.internal
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    depends_on:
-      - db
     restart: unless-stopped
 
   frontend:
     image: nginx:alpine
+    container_name: face_recognition_frontend
     ports:
       - "8080:80"
     volumes:
-      - ./static:/usr/share/nginx/html
+      - type: bind
+        source: ./static
+        target: /usr/share/nginx/html
     depends_on:
       - backend
-    restart: unless-stopped
-
-  db:
-    image: postgres:12
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=PlLcIne8Syc9e28KSioAeA/Vzz8=
-      - POSTGRES_DB=postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-
-volumes:
-  postgres_data: 
+    restart: unless-stopped 

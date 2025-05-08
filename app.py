@@ -8,10 +8,8 @@ import io
 import json
 import os
 from typing import Optional
+import sqlite3
 from datetime import datetime
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
 
 app = FastAPI()
 
@@ -24,37 +22,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# PostgreSQL connection - using existing system database
-POSTGRES_USER = "postgres"
-POSTGRES_PASSWORD = "PlLcIne8Syc9e28KSioAeA/Vzz8="
-POSTGRES_DB = "postgres"
-POSTGRES_HOST = "host.docker.internal"  # This allows Docker to connect to host machine's PostgreSQL
+# Initialize database
+def init_db():
+    conn = sqlite3.connect('face_database.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS faces
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  name TEXT NOT NULL,
+                  encoding TEXT NOT NULL,
+                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+    conn.commit()
+    conn.close()
 
-DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}/{POSTGRES_DB}"
-
-# SQLAlchemy setup
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-# Define the Face model
-class Face(Base):
-    __tablename__ = "faces"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    encoding = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-# Create tables
-Base.metadata.create_all(bind=engine)
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+init_db()
 
 def get_face_encoding(image_data):
     try:
@@ -95,21 +75,22 @@ async def recognize_face(file: UploadFile = File(...)):
             )
         
         # Compare with database
-        db = SessionLocal()
-        known_faces = db.query(Face).all()
+        conn = sqlite3.connect('face_database.db')
+        c = conn.cursor()
+        c.execute("SELECT name, encoding FROM faces")
+        known_faces = c.fetchall()
+        conn.close()
         
         best_match = None
         best_match_distance = float('inf')
         
-        for face in known_faces:
-            stored_encoding = np.array(json.loads(face.encoding))
+        for name, stored_encoding in known_faces:
+            stored_encoding = np.array(json.loads(stored_encoding))
             distance = face_recognition.face_distance([stored_encoding], face_encoding)[0]
             
             if distance < best_match_distance:
                 best_match_distance = distance
-                best_match = face.name
-        
-        db.close()
+                best_match = name
         
         # If the best match is too different, consider it unknown
         if best_match_distance > 0.6:  # Threshold can be adjusted
@@ -140,14 +121,12 @@ async def register_face(name: str = Form(...), file: UploadFile = File(...)):
             )
         
         # Store in database
-        db = SessionLocal()
-        new_face = Face(
-            name=name,
-            encoding=json.dumps(face_encoding.tolist())
-        )
-        db.add(new_face)
-        db.commit()
-        db.close()
+        conn = sqlite3.connect('face_database.db')
+        c = conn.cursor()
+        c.execute("INSERT INTO faces (name, encoding) VALUES (?, ?)",
+                 (name, json.dumps(face_encoding.tolist())))
+        conn.commit()
+        conn.close()
         
         return JSONResponse(
             content={"status": "success", "message": f"Face registered for {name}"}

@@ -1,6 +1,6 @@
 FROM python:3.9-slim
 
-# Install system dependencies required for face_recognition and PostgreSQL
+# Install system dependencies required for face_recognition
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y \
     libatlas-base-dev \
     libgtk-3-dev \
     libboost-python-dev \
-    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -21,11 +20,14 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create necessary directories
+RUN mkdir -p /app/data /app/static
+
 # Copy the rest of the application
 COPY . .
 
-# Create directory for the database
-RUN mkdir -p /app/data
+# Set permissions
+RUN chmod -R 755 /app
 
 # Expose the port
 EXPOSE 8000
