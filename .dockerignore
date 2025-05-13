@@ -1,0 +1,49 @@
+# Git files
+.git
+.gitignore
+
+# Docker files
+docker-compose*.yml
+Dockerfile
+.dockerignore
+
+# Virtual environment
+.venv
+**/venv
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Database files
+data/
+Database/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+
+# Documentation
+README.md
+docs/
